@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Longueur d'Onde — Soumettre une carte</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,sans-serif;background:#111;color:#eee;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+.card{background:#1a1a1a;border:1px solid #333;border-radius:14px;padding:28px 22px;width:min(380px,100%);display:flex;flex-direction:column;gap:14px}
+h2{color:#FF4757;font-size:20px;font-weight:700;text-align:center}
+.sub{font-size:13px;color:#888;text-align:center;line-height:1.5}
+.session{font-size:11px;color:#555;text-align:center;letter-spacing:.15em;padding:6px 0;border-top:1px solid #2a2a2a;border-bottom:1px solid #2a2a2a}
+label{font-size:11px;color:#666;letter-spacing:.1em;text-transform:uppercase}
+input{width:100%;padding:12px;background:#222;border:1px solid #444;border-radius:7px;color:#eee;font-size:16px;outline:none;transition:border-color .2s;margin-top:5px}
+input:focus{border-color:#FF4757}
+button{width:100%;padding:14px;background:#FF4757;border:none;border-radius:8px;color:#fff;font-size:15px;font-weight:700;cursor:pointer;transition:opacity .2s;letter-spacing:.05em}
+button:disabled{opacity:.4;cursor:not-allowed}
+#msg{text-align:center;font-size:14px;min-height:20px;font-weight:500}
+.divider{border:none;border-top:1px solid #2a2a2a}
+#listTitle{font-size:11px;color:#555;letter-spacing:.12em;text-transform:uppercase}
+#list{display:flex;flex-direction:column;gap:6px;max-height:180px;overflow-y:auto}
+.item{display:flex;align-items:center;gap:8px;font-size:13px;background:#222;border-radius:6px;padding:8px 11px}
+.item .l{color:#00d4ff;font-weight:600}
+.item .r{color:#ff6b35;font-weight:600}
+.item .sep{color:#444}
+.err-banner{background:#2a1111;border:1px solid #553333;border-radius:8px;padding:12px;font-size:13px;color:#f88;text-align:center}
+</style>
+</head>
+<body>
+<div class="card">
+  <h2>🌊 Longueur d'Onde</h2>
+  <p class="sub">Proposez une paire de concepts opposés pour enrichir la partie !</p>
+  <p class="session" id="ses">SESSION : —</p>
+
+  <div id="errBanner" class="err-banner" style="display:none">
+    Paramètres manquants — scannez à nouveau le QR code.
+  </div>
+
+  <div id="formWrap">
+    <div>
+      <label>Concept A — côté gauche</label>
+      <input id="ca" placeholder="ex : Glacial" maxlength="24" autocomplete="off">
+    </div>
+    <div>
+      <label>Concept B — côté droit</label>
+      <input id="cb" placeholder="ex : Brûlant" maxlength="24" autocomplete="off">
+    </div>
+    <button id="btn" onclick="send()">SOUMETTRE</button>
+    <p id="msg"></p>
+  </div>
+
+  <div id="listWrap" style="display:none">
+    <hr class="divider">
+    <p id="listTitle">Cartes soumises cette session</p>
+    <div id="list"></div>
+  </div>
+</div>
+
+<script>
+const p = new URLSearchParams(location.search);
+const B = p.get('bin'), K = p.get('key'), S = p.get('session') || '—';
+const U = 'https://api.jsonbin.io/v3/b/';
+
+document.getElementById('ses').textContent = 'SESSION : ' + S;
+
+if (!B || !K) {
+  document.getElementById('errBanner').style.display = '';
+  document.getElementById('formWrap').style.display = 'none';
+}
+
+async function load() {
+  try {
+    const r = await fetch(U + B + '/latest', { headers: { 'X-Master-Key': K } });
+    const d = await r.json();
+    return (d.record && d.record.cards) || [];
+  } catch(e) { return []; }
+}
+
+async function send() {
+  const a = document.getElementById('ca').value.trim();
+  const b = document.getElementById('cb').value.trim();
+  const m = document.getElementById('msg');
+  if (!a || !b) { m.style.color = '#f55'; m.textContent = 'Remplis les deux champs !'; return; }
+  const btn = document.getElementById('btn');
+  btn.disabled = true; btn.textContent = '…';
+  m.style.color = '#aaa'; m.textContent = 'Envoi en cours…';
+  try {
+    const cards = await load();
+    cards.push([a, b]);
+    const r = await fetch(U + B, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'X-Master-Key': K },
+      body: JSON.stringify({ cards })
+    });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    m.style.color = '#4f8'; m.textContent = '✓ Carte ajoutée !';
+    document.getElementById('ca').value = '';
+    document.getElementById('cb').value = '';
+    renderList(cards);
+  } catch(e) {
+    m.style.color = '#f55'; m.textContent = 'Erreur — réessaie.';
+    console.error(e);
+  }
+  btn.disabled = false; btn.textContent = 'SOUMETTRE';
+}
+
+function renderList(cards) {
+  const w = document.getElementById('listWrap');
+  const l = document.getElementById('list');
+  if (!cards || !cards.length) { w.style.display = 'none'; return; }
+  w.style.display = '';
+  l.innerHTML = [...cards].reverse().map(c =>
+    `<div class="item"><span class="l">${c[0]}</span><span class="sep">↔</span><span class="r">${c[1]}</span></div>`
+  ).join('');
+}
+
+if (B && K) load().then(renderList);
+</script>
+</body>
+</html>
