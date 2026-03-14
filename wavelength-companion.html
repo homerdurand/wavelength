@@ -433,7 +433,7 @@ async function pushRoundToBin(card, target){
     await fetch(`${JB}/b/${BIN_ID}`,{
       method:'PUT',
       headers:{'Content-Type':'application/json','X-Master-Key':API_KEY},
-      body:JSON.stringify({session:SESSION, state:'active', card, target, round:G.round})
+      body:JSON.stringify({session:SESSION, state:'active', card, target, round:G.round, wedge:WEDGE})
     });
   }catch(e){}
 }
@@ -722,10 +722,10 @@ function enterPhase(phase){
 
   // ── PHASE: REVEAL ──
   } else if(phase==='REVEAL'){
-    G.needleVisible=true; G.wedgeVisible=false;
+    G.needleVisible=true; G.wedgeVisible=true;
     badge.textContent='✨ RÉVÉLATION'; badge.style.color='var(--accent2)';
     inst.textContent=''; btn.style.display='none';
-    G.revealAnimating=true; G.revealProgress=0;
+    G.revealAnimating=false; G.revealProgress=1;
 
     // Score calculation (standard Wavelength rules)
     // → Opposing team (seekers of their own psychic = here: psychic team placed needle)
@@ -875,10 +875,9 @@ function setAngle(e){
 function draw(dt){
   ctx.clearRect(0,0,canvas.width,canvas.height);
   drawDial(); 
-  if(G.wedgeVisible||G.revealAnimating) drawWedge();
+  if(G.wedgeVisible) drawWedge();
   if(G.needleVisible) drawNeedle();
   drawShutter(dt);
-  if(G.revealAnimating){G.revealProgress=Math.min(1,G.revealProgress+dt*.0009);if(G.revealProgress>=1)G.revealAnimating=false;}
 }
 
 function drawDial(){
@@ -896,11 +895,10 @@ function drawDial(){
 }
 
 function drawWedge(){
-  const{cx,cy,radius,wedgeCenter,revealAnimating,revealProgress}=G;
-  const alpha=revealAnimating?Math.min(1,revealProgress*3):1;
+  const{cx,cy,radius,wedgeCenter}=G;
   ctx.save();
   function arc(ir,or,hw,col,a2){
-    ctx.globalAlpha=alpha*a2;
+    ctx.globalAlpha=a2;
     ctx.beginPath();
     ctx.arc(cx,cy,radius*or,d2r(wedgeCenter+hw),d2r(wedgeCenter-hw),false);
     ctx.arc(cx,cy,radius*ir,d2r(wedgeCenter-hw),d2r(wedgeCenter+hw),true);
@@ -910,6 +908,10 @@ function drawWedge(){
   arc(.5,.95,WEDGE.inner,'#88bbff',.25);
   arc(.5,.95,WEDGE.center,'#ffd700',.55);
   const p1=ptOnArc(wedgeCenter,radius*.95),p2=ptOnArc(wedgeCenter,radius*.5);
+  ctx.globalAlpha=.7;ctx.beginPath();ctx.moveTo(p2.x,p2.y);ctx.lineTo(p1.x,p1.y);
+  ctx.strokeStyle='#ffd700';ctx.lineWidth=2;ctx.setLineDash([4,4]);ctx.stroke();ctx.setLineDash([]);
+  ctx.restore();
+}
   ctx.globalAlpha=alpha*.7;ctx.beginPath();ctx.moveTo(p2.x,p2.y);ctx.lineTo(p1.x,p1.y);
   ctx.strokeStyle='#ffd700';ctx.lineWidth=2;ctx.setLineDash([4,4]);ctx.stroke();ctx.setLineDash([]);
   ctx.restore();

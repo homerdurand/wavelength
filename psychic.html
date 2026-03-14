@@ -76,7 +76,11 @@ function init() {
 
   function d2r(d) { return Math.PI - (d / 180) * Math.PI; }
 
-  function drawDial(target, left, right) {
+  function drawDial(target, left, right, wedge) {
+    const W_outer  = wedge ? wedge.outer  : 15;
+    const W_inner  = wedge ? wedge.inner  : 7;
+    const W_center = wedge ? wedge.center : 2;
+
     ctx.clearRect(0, 0, W, H);
 
     // Arc gradient
@@ -96,41 +100,33 @@ function init() {
       ctx.lineWidth = maj ? 2 : 1; ctx.stroke();
     }
 
-    // Outer wedge zone
-    ctx.save(); ctx.globalAlpha = .18;
-    ctx.beginPath();
-    ctx.arc(cx, cy, R * .9, d2r(target + 15), d2r(target - 15), false);
-    ctx.arc(cx, cy, R * .55, d2r(target - 15), d2r(target + 15), true);
-    ctx.closePath(); ctx.fillStyle = '#4a9aff'; ctx.fill();
+    // Draw a wedge zone
+    function wArc(hw, col, alpha) {
+      ctx.save(); ctx.globalAlpha = alpha;
+      ctx.beginPath();
+      ctx.arc(cx, cy, R * .9, d2r(target + hw), d2r(target - hw), false);
+      ctx.arc(cx, cy, R * .55, d2r(target - hw), d2r(target + hw), true);
+      ctx.closePath(); ctx.fillStyle = col; ctx.fill();
+      ctx.restore();
+    }
 
-    // Inner wedge zone
-    ctx.globalAlpha = .28;
-    ctx.beginPath();
-    ctx.arc(cx, cy, R * .9, d2r(target + 7), d2r(target - 7), false);
-    ctx.arc(cx, cy, R * .55, d2r(target - 7), d2r(target + 7), true);
-    ctx.closePath(); ctx.fillStyle = '#88bbff'; ctx.fill();
-
-    // Bullseye zone
-    ctx.globalAlpha = .6;
-    ctx.beginPath();
-    ctx.arc(cx, cy, R * .9, d2r(target + 2), d2r(target - 2), false);
-    ctx.arc(cx, cy, R * .55, d2r(target - 2), d2r(target + 2), true);
-    ctx.closePath(); ctx.fillStyle = '#ffd700'; ctx.fill();
-    ctx.restore();
+    wArc(W_outer,  '#4a9aff', .18);   // 2 pts — blue
+    wArc(W_inner,  '#88bbff', .28);   // 3 pts — lighter blue
+    wArc(W_center, '#ffd700', .60);   // 4 pts — gold
 
     // Center dashed line
-    ctx.save(); ctx.globalAlpha = .6;
+    ctx.save(); ctx.globalAlpha = .65;
     const a = d2r(target);
     ctx.beginPath();
     ctx.moveTo(cx + R * .55 * Math.cos(a), cy - R * .55 * Math.sin(a));
-    ctx.lineTo(cx + R * .9 * Math.cos(a), cy - R * .9 * Math.sin(a));
+    ctx.lineTo(cx + R * .9  * Math.cos(a), cy - R * .9  * Math.sin(a));
     ctx.strokeStyle = '#ffd700'; ctx.lineWidth = 2; ctx.setLineDash([4, 4]); ctx.stroke();
     ctx.setLineDash([]); ctx.restore();
 
     // Labels
     ctx.save();
     ctx.font = 'bold 10px Orbitron,monospace';
-    ctx.fillStyle = '#00d4ff'; ctx.textAlign = 'left'; ctx.fillText(left || '', 4, H - 14);
+    ctx.fillStyle = '#00d4ff'; ctx.textAlign = 'left';  ctx.fillText(left  || '', 4,     H - 14);
     ctx.fillStyle = '#ff6b35'; ctx.textAlign = 'right'; ctx.fillText(right || '', W - 4, H - 14);
     ctx.restore();
   }
@@ -156,7 +152,7 @@ function init() {
           // Only redraw if round changed
           if (rec.round !== lastRound) {
             lastRound = rec.round;
-            drawDial(rec.target, card[0], card[1]);
+          drawDial(rec.target, card[0], card[1], rec.wedge);
           }
         } else {
           stEl.textContent = '◌ EN ATTENTE'; stEl.className = '';
