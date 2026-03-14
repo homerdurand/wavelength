@@ -738,16 +738,15 @@ function enterPhase(phase){
       if((G.bonusGuess==='left'&&tIsLeft)||(G.bonusGuess==='right'&&!tIsLeft)) bonusPts=1;
     }
 
-    // Read psychicTeam fresh (not from closure) to ensure correct scoring
+    // Psychic's own team scores placement pts, opposing team scores the left/right bonus
     const psychicIsA = G.psychicTeam === 'A';
-    // Standard Wavelength: opposing team scores for needle placement, psychic team scores bonus
-    if(psychicIsA){ G.scoreB+=pts; G.scoreA+=bonusPts; }
-    else           { G.scoreA+=pts; G.scoreB+=bonusPts; }
+    if(psychicIsA){ G.scoreA+=pts; G.scoreB+=bonusPts; }
+    else           { G.scoreB+=pts; G.scoreA+=bonusPts; }
     updateScores();
 
-    const scoringTeam   = psychicIsA ? G.teamBName : G.teamAName;
-    const bonusTeamDisp = psychicIsA ? G.teamAName : G.teamBName;
-    const bc            = psychicIsA ? 'var(--team-a)' : 'var(--team-b)';
+    const scoringTeam   = psychicIsA ? G.teamAName : G.teamBName;
+    const bonusTeamDisp = psychicIsA ? G.teamBName : G.teamAName;
+    const bc            = psychicIsA ? 'var(--team-b)' : 'var(--team-a)';
 
     let txt='';
     if(pts===4)      txt=`<span style="color:#ff8800">★ EN PLEIN DANS LE MILLE · ${scoringTeam} +4</span>`;
@@ -884,39 +883,47 @@ function drawDial(){
 
 function drawWedge(){
   const{cx,cy,radius,wedgeCenter}=G;
+  const cc = Math.PI - (wedgeCenter/180)*Math.PI;
 
-  function fillWedge(hw, col, alpha){
-    const cc = Math.PI - (wedgeCenter/180)*Math.PI;
+  // Draw arc lines at each zone boundary
+  function drawArc(hw, col, lineW, alpha){
     const hw_rad = (hw/180)*Math.PI;
     const aStart = cc - hw_rad;
     const aEnd   = cc + hw_rad;
     ctx.save();
     ctx.globalAlpha = alpha;
     ctx.beginPath();
-    ctx.moveTo(cx, cy);
-    ctx.arc(cx, cy, radius*.95, aStart, aEnd, false);
-    ctx.closePath();
-    ctx.clip();
+    ctx.arc(cx, cy, radius*0.95, aStart, aEnd, false);
+    ctx.strokeStyle = col;
+    ctx.lineWidth = lineW;
+    ctx.stroke();
     ctx.beginPath();
-    ctx.arc(cx, cy, radius*.95, 0, Math.PI*2, false);
-    ctx.arc(cx, cy, radius*.5,  0, Math.PI*2, true);
-    ctx.fillStyle = col;
-    ctx.fill('evenodd');
+    ctx.arc(cx, cy, radius*0.5, aStart, aEnd, false);
+    ctx.stroke();
+    // Side lines
+    ctx.beginPath();
+    ctx.moveTo(cx + radius*0.5*Math.cos(aStart), cy - radius*0.5*Math.sin(aStart));
+    ctx.lineTo(cx + radius*0.95*Math.cos(aStart), cy - radius*0.95*Math.sin(aStart));
+    ctx.moveTo(cx + radius*0.5*Math.cos(aEnd), cy - radius*0.5*Math.sin(aEnd));
+    ctx.lineTo(cx + radius*0.95*Math.cos(aEnd), cy - radius*0.95*Math.sin(aEnd));
+    ctx.stroke();
     ctx.restore();
   }
 
-  fillWedge(WEDGE.outer,  '#4a9aff', .25);
-  fillWedge(WEDGE.inner,  '#88bbff', .40);
-  fillWedge(WEDGE.center, '#ffd700', .70);
+  drawArc(WEDGE.outer,  '#4a9aff', 1.5, 0.5);  // 2 pts — blue
+  drawArc(WEDGE.inner,  '#88bbff', 1.5, 0.7);  // 3 pts — lighter blue
+  drawArc(WEDGE.center, '#ffd700', 2.5, 0.9);  // 4 pts — gold
 
+  // Center dashed line
   const p1 = ptOnArc(wedgeCenter, radius*.95);
   const p2 = ptOnArc(wedgeCenter, radius*.5);
   ctx.save();
-  ctx.globalAlpha = .85;
+  ctx.globalAlpha = .9;
   ctx.beginPath(); ctx.moveTo(p2.x, p2.y); ctx.lineTo(p1.x, p1.y);
   ctx.strokeStyle = '#ffd700'; ctx.lineWidth = 2; ctx.setLineDash([4,4]); ctx.stroke();
   ctx.setLineDash([]); ctx.restore();
 }
+
 
 function drawNeedle(){
   const{cx,cy,radius,currentAngle}=G; ctx.save();

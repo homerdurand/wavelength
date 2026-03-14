@@ -100,26 +100,25 @@ function init() {
       ctx.lineWidth = maj ? 2 : 1; ctx.stroke();
     }
 
-    function fillWedge(hw, col, alpha) {
-      const cc = Math.PI - (target/180)*Math.PI;
+    function drawZone(hw, col, lineW, alpha){
+      const cc2 = Math.PI - (target/180)*Math.PI;
       const hw_rad = (hw/180)*Math.PI;
-      const aStart = cc - hw_rad;
-      const aEnd   = cc + hw_rad;
-      ctx.save(); ctx.globalAlpha = alpha;
+      const aStart = cc2 - hw_rad;
+      const aEnd   = cc2 + hw_rad;
+      ctx.save(); ctx.globalAlpha = alpha; ctx.strokeStyle = col; ctx.lineWidth = lineW;
+      ctx.beginPath(); ctx.arc(cx, cy, R*.9,  aStart, aEnd, false); ctx.stroke();
+      ctx.beginPath(); ctx.arc(cx, cy, R*.55, aStart, aEnd, false); ctx.stroke();
       ctx.beginPath();
-      ctx.moveTo(cx, cy);
-      ctx.arc(cx, cy, R*.9, aStart, aEnd, false);
-      ctx.closePath(); ctx.clip();
-      ctx.beginPath();
-      ctx.arc(cx, cy, R*.9,  0, Math.PI*2, false);
-      ctx.arc(cx, cy, R*.55, 0, Math.PI*2, true);
-      ctx.fillStyle = col; ctx.fill('evenodd');
-      ctx.restore();
+      ctx.moveTo(cx+R*.55*Math.cos(aStart), cy-R*.55*Math.sin(aStart));
+      ctx.lineTo(cx+R*.9*Math.cos(aStart),  cy-R*.9*Math.sin(aStart));
+      ctx.moveTo(cx+R*.55*Math.cos(aEnd),   cy-R*.55*Math.sin(aEnd));
+      ctx.lineTo(cx+R*.9*Math.cos(aEnd),    cy-R*.9*Math.sin(aEnd));
+      ctx.stroke(); ctx.restore();
     }
 
-    fillWedge(W_outer,  '#4a9aff', .25);
-    fillWedge(W_inner,  '#88bbff', .40);
-    fillWedge(W_center, '#ffd700', .70);
+    drawZone(W_outer,  '#4a9aff', 1.5, 0.5);
+    drawZone(W_inner,  '#88bbff', 1.5, 0.7);
+    drawZone(W_center, '#ffd700', 2.5, 0.9);
 
     // Center dashed line
     ctx.save(); ctx.globalAlpha = .65;
