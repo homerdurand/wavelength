@@ -912,10 +912,6 @@ function drawWedge(){
   ctx.strokeStyle='#ffd700';ctx.lineWidth=2;ctx.setLineDash([4,4]);ctx.stroke();ctx.setLineDash([]);
   ctx.restore();
 }
-  ctx.globalAlpha=alpha*.7;ctx.beginPath();ctx.moveTo(p2.x,p2.y);ctx.lineTo(p1.x,p1.y);
-  ctx.strokeStyle='#ffd700';ctx.lineWidth=2;ctx.setLineDash([4,4]);ctx.stroke();ctx.setLineDash([]);
-  ctx.restore();
-}
 
 function drawNeedle(){
   const{cx,cy,radius,currentAngle}=G; ctx.save();
