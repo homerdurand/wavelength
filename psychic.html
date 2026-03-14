@@ -100,24 +100,26 @@ function init() {
       ctx.lineWidth = maj ? 2 : 1; ctx.stroke();
     }
 
-    // Draw a wedge zone — same geometry as companion:
-    // d2r inverts angles, so aL=d2r(target-hw) is larger, aR=d2r(target+hw) is smaller.
-    // Outer arc anticlockwise=true goes from aL down to aR (the short way through the top).
-    // Inner arc anticlockwise=false goes back from aR up to aL.
-    function wArc(hw, col, alpha) {
-      const aL = d2r(target - hw); // left edge  (larger canvas angle)
-      const aR = d2r(target + hw); // right edge (smaller canvas angle)
+    function fillWedge(hw, col, alpha) {
+      const cc = Math.PI - (target/180)*Math.PI;
+      const hw_rad = (hw/180)*Math.PI;
+      const aStart = cc - hw_rad;
+      const aEnd   = cc + hw_rad;
       ctx.save(); ctx.globalAlpha = alpha;
       ctx.beginPath();
-      ctx.arc(cx, cy, R * .9,  aL, aR, true);   // outer arc, anticlockwise
-      ctx.arc(cx, cy, R * .55, aR, aL, false);  // inner arc, clockwise
-      ctx.closePath(); ctx.fillStyle = col; ctx.fill();
+      ctx.moveTo(cx, cy);
+      ctx.arc(cx, cy, R*.9, aStart, aEnd, false);
+      ctx.closePath(); ctx.clip();
+      ctx.beginPath();
+      ctx.arc(cx, cy, R*.9,  0, Math.PI*2, false);
+      ctx.arc(cx, cy, R*.55, 0, Math.PI*2, true);
+      ctx.fillStyle = col; ctx.fill('evenodd');
       ctx.restore();
     }
 
-    wArc(W_outer,  '#4a9aff', .18);   // 2 pts — blue
-    wArc(W_inner,  '#88bbff', .28);   // 3 pts — lighter blue
-    wArc(W_center, '#ffd700', .60);   // 4 pts — gold
+    fillWedge(W_outer,  '#4a9aff', .25);
+    fillWedge(W_inner,  '#88bbff', .40);
+    fillWedge(W_center, '#ffd700', .70);
 
     // Center dashed line
     ctx.save(); ctx.globalAlpha = .65;

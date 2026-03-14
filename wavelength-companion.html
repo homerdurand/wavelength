@@ -738,21 +738,23 @@ function enterPhase(phase){
       if((G.bonusGuess==='left'&&tIsLeft)||(G.bonusGuess==='right'&&!tIsLeft)) bonusPts=1;
     }
 
-    // Apply scores immediately
-    if(isA){ G.scoreB+=pts; G.scoreA+=bonusPts; }
-    else    { G.scoreA+=pts; G.scoreB+=bonusPts; }
+    // Read psychicTeam fresh (not from closure) to ensure correct scoring
+    const psychicIsA = G.psychicTeam === 'A';
+    // Standard Wavelength: opposing team scores for needle placement, psychic team scores bonus
+    if(psychicIsA){ G.scoreB+=pts; G.scoreA+=bonusPts; }
+    else           { G.scoreA+=pts; G.scoreB+=bonusPts; }
     updateScores();
 
-    const scoringTeam=isA?G.teamBName:G.teamAName;
-    const bonusTeamDisplay=isA?G.teamAName:G.teamBName;
-    const bc=isA?'var(--team-a)':'var(--team-b)';
+    const scoringTeam   = psychicIsA ? G.teamBName : G.teamAName;
+    const bonusTeamDisp = psychicIsA ? G.teamAName : G.teamBName;
+    const bc            = psychicIsA ? 'var(--team-a)' : 'var(--team-b)';
 
     let txt='';
     if(pts===4)      txt=`<span style="color:#ff8800">★ EN PLEIN DANS LE MILLE · ${scoringTeam} +4</span>`;
     else if(pts===3) txt=`<span style="color:#ffee00">▲ TRÈS PROCHE · ${scoringTeam} +3</span>`;
     else if(pts===2) txt=`<span style="color:#ccc">◆ PROCHE · ${scoringTeam} +2</span>`;
     else             txt=`<span style="color:var(--text-dim)">✕ RATÉ · ${scoringTeam} +0</span>`;
-    if(bonusPts) txt+=`<br><span style="color:${bc};font-size:14px">${bonusTeamDisplay} +1 BONUS ↔</span>`;
+    if(bonusPts) txt+=`<br><span style="color:${bc};font-size:14px">${bonusTeamDisp} +1 BONUS ↔</span>`;
 
     const el=document.createElement('div'); el.className='reveal-score'; el.innerHTML=txt;
     ui.appendChild(el);
@@ -762,7 +764,7 @@ function enterPhase(phase){
       return;
     }
     btn.style.display='block'; btn.textContent='MANCHE SUIVANTE →'; btn.className='action-btn primary';
-    btn.onclick=()=>{ G.round++; G.psychicTeam=isA?'B':'A'; startRound(); };
+    btn.onclick=()=>{ G.round++; G.psychicTeam=(G.psychicTeam==='A'?'B':'A'); startRound(); };
   }
 }
 
@@ -882,34 +884,31 @@ function drawDial(){
 
 function drawWedge(){
   const{cx,cy,radius,wedgeCenter}=G;
-  // Convert wedgeCenter to canvas radians once
-  // d2r: dial 0°=left(π), 90°=up(π/2), 180°=right(0)
-  // So canvas angle = π - (dial° / 180) * π
-  // A wedge of ±hw dial-degrees around center:
-  //   left edge  = d2r(wedgeCenter + hw)  → smaller canvas angle (more to the right)
-  //   right edge = d2r(wedgeCenter - hw)  → larger  canvas angle (more to the left)
-  // ctx.arc goes clockwise, so we draw from larger angle to smaller angle with anticlockwise=false
-  function wedgeArc(innerR, outerR, hw, col, alpha){
-    const a1 = d2r(wedgeCenter - hw); // left edge  (larger canvas angle)
-    const a2 = d2r(wedgeCenter + hw); // right edge (smaller canvas angle)
+
+  function fillWedge(hw, col, alpha){
+    const cc = Math.PI - (wedgeCenter/180)*Math.PI;
+    const hw_rad = (hw/180)*Math.PI;
+    const aStart = cc - hw_rad;
+    const aEnd   = cc + hw_rad;
     ctx.save();
     ctx.globalAlpha = alpha;
     ctx.beginPath();
-    // Outer arc: from a1 to a2 going counter-clockwise (anticlockwise=true means decreasing angle)
-    ctx.arc(cx, cy, outerR, a1, a2, true);
-    // Inner arc: from a2 back to a1 going clockwise
-    ctx.arc(cx, cy, innerR, a2, a1, false);
+    ctx.moveTo(cx, cy);
+    ctx.arc(cx, cy, radius*.95, aStart, aEnd, false);
     ctx.closePath();
+    ctx.clip();
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius*.95, 0, Math.PI*2, false);
+    ctx.arc(cx, cy, radius*.5,  0, Math.PI*2, true);
     ctx.fillStyle = col;
-    ctx.fill();
+    ctx.fill('evenodd');
     ctx.restore();
   }
 
-  wedgeArc(radius*.5, radius*.95, WEDGE.outer,  '#4a9aff', .22); // 2 pts
-  wedgeArc(radius*.5, radius*.95, WEDGE.inner,  '#88bbff', .35); // 3 pts
-  wedgeArc(radius*.5, radius*.95, WEDGE.center, '#ffd700', .65); // 4 pts
+  fillWedge(WEDGE.outer,  '#4a9aff', .25);
+  fillWedge(WEDGE.inner,  '#88bbff', .40);
+  fillWedge(WEDGE.center, '#ffd700', .70);
 
-  // Center dashed line
   const p1 = ptOnArc(wedgeCenter, radius*.95);
   const p2 = ptOnArc(wedgeCenter, radius*.5);
   ctx.save();
