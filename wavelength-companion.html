@@ -882,37 +882,41 @@ function drawDial(){
 
 function drawWedge(){
   const{cx,cy,radius,wedgeCenter}=G;
-
-  // d2r maps dial-degrees to canvas radians: left=π, right=0, up=π/2
-  // wedgeCenter+hw is more to the right → smaller canvas angle → use as END of clockwise arc
-  // wedgeCenter-hw is more to the left  → larger canvas angle  → use as START of clockwise arc
-  function wedgeArc(ir, or, hw, col, alpha){
-    const startA = d2r(wedgeCenter + hw); // smaller angle (right side)
-    const endA   = d2r(wedgeCenter - hw); // larger angle  (left side)
+  // Convert wedgeCenter to canvas radians once
+  // d2r: dial 0°=left(π), 90°=up(π/2), 180°=right(0)
+  // So canvas angle = π - (dial° / 180) * π
+  // A wedge of ±hw dial-degrees around center:
+  //   left edge  = d2r(wedgeCenter + hw)  → smaller canvas angle (more to the right)
+  //   right edge = d2r(wedgeCenter - hw)  → larger  canvas angle (more to the left)
+  // ctx.arc goes clockwise, so we draw from larger angle to smaller angle with anticlockwise=false
+  function wedgeArc(innerR, outerR, hw, col, alpha){
+    const a1 = d2r(wedgeCenter - hw); // left edge  (larger canvas angle)
+    const a2 = d2r(wedgeCenter + hw); // right edge (smaller canvas angle)
     ctx.save();
     ctx.globalAlpha = alpha;
     ctx.beginPath();
-    ctx.arc(cx, cy, radius * or, endA, startA, false); // outer arc, clockwise
-    ctx.arc(cx, cy, radius * ir, startA, endA, true);  // inner arc, counter-clockwise
+    // Outer arc: from a1 to a2 going counter-clockwise (anticlockwise=true means decreasing angle)
+    ctx.arc(cx, cy, outerR, a1, a2, true);
+    // Inner arc: from a2 back to a1 going clockwise
+    ctx.arc(cx, cy, innerR, a2, a1, false);
     ctx.closePath();
     ctx.fillStyle = col;
     ctx.fill();
     ctx.restore();
   }
 
-  wedgeArc(.5, .95, WEDGE.outer,  '#4a9aff', .20); // 2 pts — blue
-  wedgeArc(.5, .95, WEDGE.inner,  '#88bbff', .30); // 3 pts — lighter blue
-  wedgeArc(.5, .95, WEDGE.center, '#ffd700', .60); // 4 pts — gold
+  wedgeArc(radius*.5, radius*.95, WEDGE.outer,  '#4a9aff', .22); // 2 pts
+  wedgeArc(radius*.5, radius*.95, WEDGE.inner,  '#88bbff', .35); // 3 pts
+  wedgeArc(radius*.5, radius*.95, WEDGE.center, '#ffd700', .65); // 4 pts
 
   // Center dashed line
-  const p1 = ptOnArc(wedgeCenter, radius * .95);
-  const p2 = ptOnArc(wedgeCenter, radius * .5);
+  const p1 = ptOnArc(wedgeCenter, radius*.95);
+  const p2 = ptOnArc(wedgeCenter, radius*.5);
   ctx.save();
-  ctx.globalAlpha = .8;
+  ctx.globalAlpha = .85;
   ctx.beginPath(); ctx.moveTo(p2.x, p2.y); ctx.lineTo(p1.x, p1.y);
-  ctx.strokeStyle = '#ffd700'; ctx.lineWidth = 2; ctx.setLineDash([4, 4]); ctx.stroke();
-  ctx.setLineDash([]);
-  ctx.restore();
+  ctx.strokeStyle = '#ffd700'; ctx.lineWidth = 2; ctx.setLineDash([4,4]); ctx.stroke();
+  ctx.setLineDash([]); ctx.restore();
 }
 
 function drawNeedle(){

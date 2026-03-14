@@ -100,12 +100,17 @@ function init() {
       ctx.lineWidth = maj ? 2 : 1; ctx.stroke();
     }
 
-    // Draw a wedge zone
+    // Draw a wedge zone — same geometry as companion:
+    // d2r inverts angles, so aL=d2r(target-hw) is larger, aR=d2r(target+hw) is smaller.
+    // Outer arc anticlockwise=true goes from aL down to aR (the short way through the top).
+    // Inner arc anticlockwise=false goes back from aR up to aL.
     function wArc(hw, col, alpha) {
+      const aL = d2r(target - hw); // left edge  (larger canvas angle)
+      const aR = d2r(target + hw); // right edge (smaller canvas angle)
       ctx.save(); ctx.globalAlpha = alpha;
       ctx.beginPath();
-      ctx.arc(cx, cy, R * .9, d2r(target + hw), d2r(target - hw), false);
-      ctx.arc(cx, cy, R * .55, d2r(target - hw), d2r(target + hw), true);
+      ctx.arc(cx, cy, R * .9,  aL, aR, true);   // outer arc, anticlockwise
+      ctx.arc(cx, cy, R * .55, aR, aL, false);  // inner arc, clockwise
       ctx.closePath(); ctx.fillStyle = col; ctx.fill();
       ctx.restore();
     }
@@ -149,10 +154,9 @@ function init() {
           document.getElementById('cr').textContent = card[1];
           infoEl.style.display = 'flex';
           waitEl.style.display = 'none';
-          // Only redraw if round changed
           if (rec.round !== lastRound) {
             lastRound = rec.round;
-          drawDial(rec.target, card[0], card[1], rec.wedge);
+            drawDial(rec.target, card[0], card[1], rec.wedge);
           }
         } else {
           stEl.textContent = '◌ EN ATTENTE'; stEl.className = '';
