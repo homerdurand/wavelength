@@ -725,15 +725,7 @@ function enterPhase(phase){
     G.needleVisible=true; G.wedgeVisible=true;
     badge.textContent='✨ RÉVÉLATION'; badge.style.color='var(--accent2)';
     inst.textContent=''; btn.style.display='none';
-    G.revealAnimating=false; G.revealProgress=1;
 
-    // Score calculation (standard Wavelength rules)
-    // → Opposing team (seekers of their own psychic = here: psychic team placed needle)
-    //   Wait — let's be precise:
-    //   - psychicTeam placed the needle (they are BOTH psychic + seekers this turn)
-    //   - bonusTeam (opponents) guesses left/right
-    //   - In standard rules: the OPPOSING team scores for needle placement
-    //     i.e. Team B scores when Team A's psychic plays
     const diff=Math.abs(G.guessAngle-G.wedgeCenter);
     let pts=0;
     if(diff<=WEDGE.center) pts=4;
@@ -746,37 +738,31 @@ function enterPhase(phase){
       if((G.bonusGuess==='left'&&tIsLeft)||(G.bonusGuess==='right'&&!tIsLeft)) bonusPts=1;
     }
 
-    setTimeout(()=>{
-      G.wedgeVisible=true;
-      // Standard Wavelength scoring:
-      // Opposing team scores for how well the needle was placed
-      // Psychic's team scores the left/right bonus
-      if(isA){ G.scoreB+=pts; G.scoreA+=bonusPts; }
-      else    { G.scoreA+=pts; G.scoreB+=bonusPts; }
-      updateScores();
+    // Apply scores immediately
+    if(isA){ G.scoreB+=pts; G.scoreA+=bonusPts; }
+    else    { G.scoreA+=pts; G.scoreB+=bonusPts; }
+    updateScores();
 
-      const scoringTeam=isA?G.teamBName:G.teamAName; // team that scores pts
-      const bonusTeamDisplay=isA?G.teamAName:G.teamBName;
-      const sc=isA?'var(--team-b)':'var(--team-a)';
-      const bc=isA?'var(--team-a)':'var(--team-b)';
+    const scoringTeam=isA?G.teamBName:G.teamAName;
+    const bonusTeamDisplay=isA?G.teamAName:G.teamBName;
+    const bc=isA?'var(--team-a)':'var(--team-b)';
 
-      let txt='';
-      if(pts===4)      txt=`<span style="color:#ff8800">★ EN PLEIN DANS LE MILLE · ${scoringTeam} +4</span>`;
-      else if(pts===3) txt=`<span style="color:#ffee00">▲ TRÈS PROCHE · ${scoringTeam} +3</span>`;
-      else if(pts===2) txt=`<span style="color:#ccc">◆ PROCHE · ${scoringTeam} +2</span>`;
-      else             txt=`<span style="color:var(--text-dim)">✕ RATÉ · ${scoringTeam} +0</span>`;
-      if(bonusPts) txt+=`<br><span style="color:${bc};font-size:14px">${bonusTeamDisplay} +1 BONUS ↔</span>`;
+    let txt='';
+    if(pts===4)      txt=`<span style="color:#ff8800">★ EN PLEIN DANS LE MILLE · ${scoringTeam} +4</span>`;
+    else if(pts===3) txt=`<span style="color:#ffee00">▲ TRÈS PROCHE · ${scoringTeam} +3</span>`;
+    else if(pts===2) txt=`<span style="color:#ccc">◆ PROCHE · ${scoringTeam} +2</span>`;
+    else             txt=`<span style="color:var(--text-dim)">✕ RATÉ · ${scoringTeam} +0</span>`;
+    if(bonusPts) txt+=`<br><span style="color:${bc};font-size:14px">${bonusTeamDisplay} +1 BONUS ↔</span>`;
 
-      const el=document.createElement('div'); el.className='reveal-score'; el.innerHTML=txt;
-      ui.appendChild(el);
+    const el=document.createElement('div'); el.className='reveal-score'; el.innerHTML=txt;
+    ui.appendChild(el);
 
-      if(G.scoreA>=G.winScore||G.scoreB>=G.winScore){
-        setTimeout(()=>{const w=G.scoreA>=G.winScore; triggerWin(w?G.teamAName:G.teamBName,!w);},2200);
-        return;
-      }
-      btn.style.display='block'; btn.textContent='MANCHE SUIVANTE →'; btn.className='action-btn primary';
-      btn.onclick=()=>{ G.round++; G.psychicTeam=isA?'B':'A'; startRound(); };
-    },1800);
+    if(G.scoreA>=G.winScore||G.scoreB>=G.winScore){
+      setTimeout(()=>{const w=G.scoreA>=G.winScore; triggerWin(w?G.teamAName:G.teamBName,!w);},1500);
+      return;
+    }
+    btn.style.display='block'; btn.textContent='MANCHE SUIVANTE →'; btn.className='action-btn primary';
+    btn.onclick=()=>{ G.round++; G.psychicTeam=isA?'B':'A'; startRound(); };
   }
 }
 
@@ -896,20 +882,36 @@ function drawDial(){
 
 function drawWedge(){
   const{cx,cy,radius,wedgeCenter}=G;
-  ctx.save();
-  function arc(ir,or,hw,col,a2){
-    ctx.globalAlpha=a2;
+
+  // d2r maps dial-degrees to canvas radians: left=π, right=0, up=π/2
+  // wedgeCenter+hw is more to the right → smaller canvas angle → use as END of clockwise arc
+  // wedgeCenter-hw is more to the left  → larger canvas angle  → use as START of clockwise arc
+  function wedgeArc(ir, or, hw, col, alpha){
+    const startA = d2r(wedgeCenter + hw); // smaller angle (right side)
+    const endA   = d2r(wedgeCenter - hw); // larger angle  (left side)
+    ctx.save();
+    ctx.globalAlpha = alpha;
     ctx.beginPath();
-    ctx.arc(cx,cy,radius*or,d2r(wedgeCenter+hw),d2r(wedgeCenter-hw),false);
-    ctx.arc(cx,cy,radius*ir,d2r(wedgeCenter-hw),d2r(wedgeCenter+hw),true);
-    ctx.closePath();ctx.fillStyle=col;ctx.fill();
+    ctx.arc(cx, cy, radius * or, endA, startA, false); // outer arc, clockwise
+    ctx.arc(cx, cy, radius * ir, startA, endA, true);  // inner arc, counter-clockwise
+    ctx.closePath();
+    ctx.fillStyle = col;
+    ctx.fill();
+    ctx.restore();
   }
-  arc(.5,.95,WEDGE.outer,'#4a9aff',.18);
-  arc(.5,.95,WEDGE.inner,'#88bbff',.25);
-  arc(.5,.95,WEDGE.center,'#ffd700',.55);
-  const p1=ptOnArc(wedgeCenter,radius*.95),p2=ptOnArc(wedgeCenter,radius*.5);
-  ctx.globalAlpha=.7;ctx.beginPath();ctx.moveTo(p2.x,p2.y);ctx.lineTo(p1.x,p1.y);
-  ctx.strokeStyle='#ffd700';ctx.lineWidth=2;ctx.setLineDash([4,4]);ctx.stroke();ctx.setLineDash([]);
+
+  wedgeArc(.5, .95, WEDGE.outer,  '#4a9aff', .20); // 2 pts — blue
+  wedgeArc(.5, .95, WEDGE.inner,  '#88bbff', .30); // 3 pts — lighter blue
+  wedgeArc(.5, .95, WEDGE.center, '#ffd700', .60); // 4 pts — gold
+
+  // Center dashed line
+  const p1 = ptOnArc(wedgeCenter, radius * .95);
+  const p2 = ptOnArc(wedgeCenter, radius * .5);
+  ctx.save();
+  ctx.globalAlpha = .8;
+  ctx.beginPath(); ctx.moveTo(p2.x, p2.y); ctx.lineTo(p1.x, p1.y);
+  ctx.strokeStyle = '#ffd700'; ctx.lineWidth = 2; ctx.setLineDash([4, 4]); ctx.stroke();
+  ctx.setLineDash([]);
   ctx.restore();
 }
 
