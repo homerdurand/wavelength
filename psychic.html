@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Longueur d'Onde — Médium</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0a0a0f;color:#e0e0f0;font-family:'Rajdhani',sans-serif;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:20px}
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Rajdhani:wght@400;600&display=swap');
+h3{font-family:'Orbitron',monospace;color:#FF4757;font-size:20px;letter-spacing:.15em;text-align:center;filter:drop-shadow(0 0 12px rgba(255,71,87,.5))}
+#rnd{font-family:'Orbitron',monospace;font-size:11px;color:#ffd700;letter-spacing:.2em;text-align:center;min-height:16px}
+#st{font-family:'Orbitron',monospace;font-size:9px;letter-spacing:.2em;text-align:center;padding:4px 14px;border-radius:20px;border:1px solid #2a2a3f;color:#6a6a8a;background:#12121a}
+#st.active{color:#44ff88;border-color:#44ff8840}
+#info{display:none;flex-direction:column;align-items:center;gap:12px;width:100%;max-width:340px}
+.concepts{display:flex;width:100%}
+#cl{flex:1;padding:9px 12px;background:linear-gradient(135deg,#0d1a2e,#1a2a4a);border:1px solid rgba(0,212,255,.4);color:#00d4ff;font-family:'Orbitron',monospace;font-size:clamp(10px,3vw,13px);font-weight:700;text-align:center;border-radius:7px 0 0 7px;text-transform:uppercase;letter-spacing:.05em}
+#cr{flex:1;padding:9px 12px;background:linear-gradient(135deg,#2e1a0d,#4a2a1a);border:1px solid rgba(255,107,53,.4);color:#ff6b35;font-family:'Orbitron',monospace;font-size:clamp(10px,3vw,13px);font-weight:700;text-align:center;border-radius:0 7px 7px 0;text-transform:uppercase;letter-spacing:.05em}
+.csep{padding:9px 7px;background:#1a1a26;border-top:1px solid #2a2a3f;border-bottom:1px solid #2a2a3f;color:#6a6a8a;font-size:11px}
+#dc{border-radius:10px;max-width:100%;touch-action:none}
+.hint{font-size:13px;color:#6a6a8a;text-align:center;line-height:1.6;max-width:300px;font-family:'Rajdhani',sans-serif}
+.hint strong{color:#ffd700}
+#waiting{display:flex;flex-direction:column;align-items:center;gap:10px;color:#6a6a8a;font-family:'Rajdhani',sans-serif;font-size:14px;text-align:center}
+.pulse{width:12px;height:12px;border-radius:50%;background:#FF4757;animation:pulse 1.5s infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.7)}}
+#errBox{display:none;background:#2a1111;border:1px solid #553333;border-radius:10px;padding:14px;font-size:12px;color:#f88;text-align:center;max-width:300px;line-height:1.6}
+</style>
+</head>
+<body>
+
+<h3>🌊 MÉDIUM</h3>
+<div id="rnd"></div>
+<div id="st">◌ EN ATTENTE</div>
+
+<div id="errBox">Paramètres manquants — scannez à nouveau le QR code.</div>
+
+<div id="waiting">
+  <div class="pulse"></div>
+  <span>En attente de la prochaine manche…</span>
+</div>
+
+<div id="info">
+  <div class="concepts">
+    <div id="cl">—</div>
+    <div class="csep">↔</div>
+    <div id="cr">—</div>
+  </div>
+  <canvas id="dc" width="320" height="175"></canvas>
+  <div class="hint">
+    La <strong>zone dorée</strong> est votre cible secrète.<br>
+    Donnez un mot-indice à voix haute — ne montrez pas l'écran !
+  </div>
+</div>
+
+<script>
+const params = new URLSearchParams(location.search);
+const B = params.get('bin');
+const K = params.get('key');
+const S = params.get('session');
+
+if (!B || !K) {
+  document.getElementById('errBox').style.display = '';
+  document.getElementById('waiting').style.display = 'none';
+} else {
+  init();
+}
+
+function init() {
+  const cvs = document.getElementById('dc');
+  const ctx = cvs.getContext('2d');
+  const W = cvs.width, H = cvs.height;
+  const cx = W / 2, cy = H - 10;
+  const R = Math.min(W * 0.44, H * 0.88);
+
+  let lastRound = null;
+
+  function d2r(d) { return Math.PI - (d / 180) * Math.PI; }
+
+  function drawDial(target, left, right) {
+    ctx.clearRect(0, 0, W, H);
+
+    // Arc gradient
+    const g = ctx.createLinearGradient(cx - R, cy, cx + R, cy);
+    g.addColorStop(0, '#00d4ff'); g.addColorStop(.5, '#4a4a6a'); g.addColorStop(1, '#ff6b35');
+    ctx.beginPath(); ctx.arc(cx, cy, R, Math.PI, 0);
+    ctx.strokeStyle = g; ctx.lineWidth = 10; ctx.stroke();
+
+    // Tick marks
+    for (let d = 0; d <= 180; d += 10) {
+      const a = d2r(d), maj = d % 30 === 0;
+      const r1 = R * (maj ? .91 : .95), r2 = R * (maj ? .99 : .97);
+      ctx.beginPath();
+      ctx.moveTo(cx + r1 * Math.cos(a), cy - r1 * Math.sin(a));
+      ctx.lineTo(cx + r2 * Math.cos(a), cy - r2 * Math.sin(a));
+      ctx.strokeStyle = maj ? 'rgba(180,180,200,.5)' : 'rgba(100,100,140,.35)';
+      ctx.lineWidth = maj ? 2 : 1; ctx.stroke();
+    }
+
+    // Outer wedge zone
+    ctx.save(); ctx.globalAlpha = .18;
+    ctx.beginPath();
+    ctx.arc(cx, cy, R * .9, d2r(target + 15), d2r(target - 15), false);
+    ctx.arc(cx, cy, R * .55, d2r(target - 15), d2r(target + 15), true);
+    ctx.closePath(); ctx.fillStyle = '#4a9aff'; ctx.fill();
+
+    // Inner wedge zone
+    ctx.globalAlpha = .28;
+    ctx.beginPath();
+    ctx.arc(cx, cy, R * .9, d2r(target + 7), d2r(target - 7), false);
+    ctx.arc(cx, cy, R * .55, d2r(target - 7), d2r(target + 7), true);
+    ctx.closePath(); ctx.fillStyle = '#88bbff'; ctx.fill();
+
+    // Bullseye zone
+    ctx.globalAlpha = .6;
+    ctx.beginPath();
+    ctx.arc(cx, cy, R * .9, d2r(target + 2), d2r(target - 2), false);
+    ctx.arc(cx, cy, R * .55, d2r(target - 2), d2r(target + 2), true);
+    ctx.closePath(); ctx.fillStyle = '#ffd700'; ctx.fill();
+    ctx.restore();
+
+    // Center dashed line
+    ctx.save(); ctx.globalAlpha = .6;
+    const a = d2r(target);
+    ctx.beginPath();
+    ctx.moveTo(cx + R * .55 * Math.cos(a), cy - R * .55 * Math.sin(a));
+    ctx.lineTo(cx + R * .9 * Math.cos(a), cy - R * .9 * Math.sin(a));
+    ctx.strokeStyle = '#ffd700'; ctx.lineWidth = 2; ctx.setLineDash([4, 4]); ctx.stroke();
+    ctx.setLineDash([]); ctx.restore();
+
+    // Labels
+    ctx.save();
+    ctx.font = 'bold 10px Orbitron,monospace';
+    ctx.fillStyle = '#00d4ff'; ctx.textAlign = 'left'; ctx.fillText(left || '', 4, H - 14);
+    ctx.fillStyle = '#ff6b35'; ctx.textAlign = 'right'; ctx.fillText(right || '', W - 4, H - 14);
+    ctx.restore();
+  }
+
+  function poll() {
+    fetch(`https://api.jsonbin.io/v3/b/${B}/latest`, { headers: { 'X-Master-Key': K } })
+      .then(r => r.json())
+      .then(d => {
+        const rec = d.record || {};
+        const stEl = document.getElementById('st');
+        const infoEl = document.getElementById('info');
+        const waitEl = document.getElementById('waiting');
+        const rndEl = document.getElementById('rnd');
+
+        if (rec.state === 'active' && rec.target != null) {
+          stEl.textContent = '● EN JEU'; stEl.className = 'active';
+          rndEl.textContent = rec.round ? `MANCHE ${rec.round}` : '';
+          const card = rec.card || ['', ''];
+          document.getElementById('cl').textContent = card[0];
+          document.getElementById('cr').textContent = card[1];
+          infoEl.style.display = 'flex';
+          waitEl.style.display = 'none';
+          // Only redraw if round changed
+          if (rec.round !== lastRound) {
+            lastRound = rec.round;
+            drawDial(rec.target, card[0], card[1]);
+          }
+        } else {
+          stEl.textContent = '◌ EN ATTENTE'; stEl.className = '';
+          rndEl.textContent = '';
+          infoEl.style.display = 'none';
+          waitEl.style.display = 'flex';
+          lastRound = null;
+        }
+      })
+      .catch(() => {
+        document.getElementById('st').textContent = '✗ erreur réseau';
+      });
+  }
+
+  poll();
+  setInterval(poll, 2000);
+}
+</script>
+</body>
+</html>
